@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>毕业快乐</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -12,9 +12,9 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#2DD4BF', // 清新蓝绿色
-                        secondary: '#A855F7', // 淡紫色
-                        accent: '#3B82F6', // 蓝色
+                        primary: '#2DD4BF',
+                        secondary: '#A855F7',
+                        accent: '#3B82F6',
                         dark: '#0F172A',
                         light: '#F8FAFC'
                     },
@@ -39,7 +39,7 @@
             }
             @keyframes float {
                 0%, 100% { transform: translateY(0); }
-                50% { transform: translateY(-15px); }
+                50% { transform: translateY(-10px); }
             }
             .bg-gradient-animated {
                 background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
@@ -63,6 +63,9 @@
                 0% { transform: translateY(0) rotate(0deg); opacity: 1; }
                 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
             }
+            .audio-visualizer-bar {
+                transition: height 0.2s ease;
+            }
         }
     </style>
 </head>
@@ -80,7 +83,7 @@
     <!-- 主内容 -->
     <div class="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
         <div class="text-center max-w-md mx-auto">
-            <h1 class="font-poppins font-bold text-[clamp(2rem,8vw,4rem)] text-light text-shadow animate-float leading-tight mb-6">
+            <h1 class="font-poppins font-bold text-[clamp(1.8rem,6vw,3rem)] text-light text-shadow animate-float leading-tight mb-6">
                 祝愿学长学姐<br>毕业快乐
             </h1>
             <p class="font-inter text-[clamp(1rem,3vw,1.25rem)] text-primary/90 animate-pulse-slow mt-4">
@@ -100,21 +103,27 @@
     <audio id="audio" loop></audio>
 
     <script>
-        // 音频文件列表 - 请替换为你自己录制的音频URL
+        // 音频文件列表
         const audioFiles = [
             "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
             "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
         ];
 
         // DOM 元素
         const audioElement = document.getElementById('audio');
         const playBtn = document.getElementById('play-btn');
         const visualizer = document.getElementById('audio-visualizer');
-
-        // 状态变量
         let isPlaying = false;
         let currentTrackIndex = 0;
+        let musicNoteInterval;
+
+        // 移动端优化：禁用缩放
+        document.addEventListener('touchmove', (e) => {
+            if (!e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // 初始化
         function init() {
@@ -126,10 +135,15 @@
             // 创建音频可视化条
             createVisualizerBars();
             
+            // 移动端触摸反馈
+            document.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('touchstart', () => btn.classList.add('scale-95'));
+                btn.addEventListener('touchend', () => btn.classList.remove('scale-95'));
+            });
+            
             // 尝试自动播放
             audioElement.play().catch(e => {
                 console.log("自动播放失败:", e);
-                // 显示播放按钮
                 playBtn.style.display = 'flex';
             });
         }
@@ -146,22 +160,26 @@
                 audioElement.play();
                 playBtn.innerHTML = '<i class="fa fa-pause text-xl"></i>';
                 isPlaying = true;
-                createMusicNotes();
+                
+                // 启动音符动画
+                clearInterval(musicNoteInterval);
+                musicNoteInterval = setInterval(createMusicNote, 500);
             } else {
                 audioElement.pause();
                 playBtn.innerHTML = '<i class="fa fa-play text-xl"></i>';
                 isPlaying = false;
+                clearInterval(musicNoteInterval);
             }
         }
 
         // 创建音频可视化条
         function createVisualizerBars() {
-            const barsCount = 30;
+            const barsCount = 15; // 减少条数以优化性能
             visualizer.innerHTML = '';
             
             for (let i = 0; i < barsCount; i++) {
                 const bar = document.createElement('div');
-                bar.className = 'absolute bottom-0 bg-primary/70 rounded-t-lg transition-all duration-300';
+                bar.className = 'absolute bottom-0 bg-primary/70 rounded-t-lg audio-visualizer-bar';
                 bar.style.width = `${100 / barsCount}%`;
                 bar.style.left = `${i * (100 / barsCount)}%`;
                 visualizer.appendChild(bar);
@@ -175,7 +193,7 @@
         function animateBar(bar) {
             setInterval(() => {
                 if (isPlaying) {
-                    const height = Math.random() * 80 + 20;
+                    const height = Math.random() * 60 + 10; // 减小最大高度
                     bar.style.height = `${height}vh`;
                 } else {
                     bar.style.height = '2vh';
@@ -183,35 +201,32 @@
             }, 300 + Math.random() * 200);
         }
 
-        // 创建音乐音符动画
-        function createMusicNotes() {
+        // 创建单个音乐音符
+        function createMusicNote() {
             if (!isPlaying) return;
             
             const notes = ['&#9834;', '&#9835;', '&#9836;', '&#9837;'];
             const colors = ['text-primary', 'text-secondary', 'text-accent'];
             
-            setInterval(() => {
-                if (!isPlaying) return;
-                
-                const note = document.createElement('div');
-                note.className = `music-note text-[clamp(1rem,5vw,2rem)] ${colors[Math.floor(Math.random() * colors.length)]}`;
-                note.innerHTML = notes[Math.floor(Math.random() * notes.length)];
-                
-                // 随机位置
-                const leftPos = Math.random() * 80 + 10; // 10% - 90%
-                note.style.left = `${leftPos}%`;
-                
-                // 随机延迟和持续时间
-                note.style.animationDelay = `${Math.random() * 2}s`;
-                note.style.animationDuration = `${2 + Math.random() * 2}s`;
-                
-                document.body.appendChild(note);
-                
-                // 自动移除
-                setTimeout(() => {
-                    document.body.removeChild(note);
-                }, 5000);
-            }, 500);
+            const note = document.createElement('div');
+            note.className = `music-note text-[clamp(1rem,4vw,1.5rem)] ${colors[Math.floor(Math.random() * colors.length)]}`;
+            note.innerHTML = notes[Math.floor(Math.random() * notes.length)];
+            
+            // 随机位置
+            const leftPos = Math.random() * 80 + 10;
+            note.style.left = `${leftPos}%`;
+            
+            // 随机延迟和持续时间
+            note.style.animationDuration = `${2 + Math.random() * 1}s`;
+            
+            document.body.appendChild(note);
+            
+            // 自动移除
+            setTimeout(() => {
+                if (note.parentNode) {
+                    note.parentNode.removeChild(note);
+                }
+            }, 3000);
         }
 
         // 页面加载完成后初始化
@@ -219,4 +234,3 @@
     </script>
 </body>
 </html>
-    
